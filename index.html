@@ -1,0 +1,445 @@
+<!-- Copyright (c) 2025 LtcShadow -->
+<!-- Licensed under the MIT License. See LICENSE file in the project root for full license information. -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF to RGB565 Converter</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+    <style>
+        /* CSS Reset for consistency */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Modern CSS Design */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 2em;
+            font-weight: 300;
+        }
+
+        p {
+            color: #718096;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        input[type="file"], select, input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="file"]:focus, select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin: 10px;
+            min-width: 120px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background: #edf2f7;
+            color: #4a5568;
+            font-weight: 500;
+            border: 1px solid #e2e8f0; /* Replace border-left with full border */
+            min-height: 20px;
+        }
+
+        .download-section {
+            display: none;
+            margin-top: 30px; /* Increased spacing */
+            flex-direction: column;
+            gap: 15px;
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .download-section.show {
+            display: flex;
+        }
+
+        .download-section p {
+            margin: 0;
+            color: #48bb78;
+            font-weight: 500;
+        }
+
+        /* Responsive Design for Mobile */
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+                border-radius: 15px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            button {
+                width: 100%;
+                margin: 5px 0;
+            }
+
+            .download-section {
+                gap: 10px;
+                padding: 15px;
+            }
+
+            #status {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GIF 轉換工具</h1>
+        <p>上傳 GIF 檔案，選擇裝置或手動輸入寬高，然後點擊轉換。</p>
+
+        <label for="gifFile">選擇 GIF 檔案：</label>
+        <input type="file" id="gifFile" accept=".gif">
+
+        <label for="deviceSelect">快速選擇裝置：</label>
+        <select id="deviceSelect">
+            <option value="">自訂</option>
+            <option value="240,135">LilyGo T-Display (240x135)</option>
+            <option value="320,170">LilyGo T-Display S3 (320x170)</option>
+            <option value="240,320">ESP32-CYD (240x320)</option>
+        </select>
+
+        <label for="maxWidth">Max Width：</label>
+        <input type="number" id="maxWidth" value="240">
+
+        <label for="maxHeight">Max Height：</label>
+        <input type="number" id="maxHeight" value="135">
+
+        <button id="convertButton">轉換並產生檔案</button>
+
+        <p id="status"></p>
+
+        <div id="downloadSection" class="download-section">
+            <p>轉換完成！請選擇下載檔案：</p>
+            <button id="downloadH">下載 .h 檔案</button>
+            <button id="downloadBin">下載 .bin 檔案</button>
+        </div>
+    </div>
+
+    <script>
+        // Load Pyodide and prepare the environment
+        async function loadPyodideAndPackages() {
+            let pyodide = await loadPyodide();
+            await pyodide.loadPackage('micropip');
+            await pyodide.loadPackage('pillow');
+            return pyodide;
+        }
+
+        const pyodidePromise = loadPyodideAndPackages();
+
+        // Global variables for download blobs
+        let hBlob = null;
+        let binBlob = null;
+
+        // Device select change event
+        document.getElementById('deviceSelect').addEventListener('change', function() {
+            const value = this.value;
+            if (value) {
+                const [width, height] = value.split(',').map(Number);
+                document.getElementById('maxWidth').value = width;
+                document.getElementById('maxHeight').value = height;
+            }
+        });
+
+        // Convert button click event
+        document.getElementById('convertButton').addEventListener('click', async function() {
+            const status = document.getElementById('status');
+            const downloadSection = document.getElementById('downloadSection');
+            status.textContent = '正在載入環境並處理...';
+            this.disabled = true;  // Disable button during processing
+
+            const fileInput = document.getElementById('gifFile');
+            if (!fileInput.files.length) {
+                status.textContent = '請選擇 GIF 檔案。';
+                this.disabled = false;
+                return;
+            }
+
+            const maxWidth = parseInt(document.getElementById('maxWidth').value);
+            const maxHeight = parseInt(document.getElementById('maxHeight').value);
+            if (isNaN(maxWidth) || isNaN(maxHeight) || maxWidth <= 0 || maxHeight <= 0) {
+                status.textContent = '請輸入有效的寬高值。';
+                this.disabled = false;
+                return;
+            }
+
+            try {
+                const file = fileInput.files[0];
+                const arrayBuffer = await file.arrayBuffer();
+                const gifBytes = new Uint8Array(arrayBuffer);
+
+                const pyodide = await pyodidePromise;
+
+                // Python code to process GIF (unchanged from previous version)
+                const pythonCode = `
+import io
+from PIL import Image, ImageSequence
+import struct
+
+def color_to_rgb565(color):
+    # Convert RGB color to RGB565 (16-bit) format
+    r, g, b = color
+    r = r >> 3
+    g = g >> 2
+    b = b >> 3
+    return (r << 11) | (g << 5) | b
+
+def process_gif(gif_bytes, max_width, max_height):
+    # Convert JsProxy (Uint8Array) to Python bytes
+    gif_bytes = bytes(gif_bytes.to_py())
+
+    output_h = ""
+    output_bin = bytearray()
+
+    try:
+        with Image.open(io.BytesIO(gif_bytes)) as gif_image:
+            # Initialize background for disposal method
+            background = Image.new('RGB', gif_image.size, (0, 0, 0))  # Black background
+            last_frame = None
+            frames = []
+            frame_delays = []
+            frame_count = 0
+
+            for frame in ImageSequence.Iterator(gif_image):
+                # Explicitly copy the frame to avoid state issues
+                frame_copy = frame.copy()
+
+                # Get per-frame transparency index and disposal method
+                transparency_index = frame.info.get('transparency', None)
+                disposal = frame.info.get('disposal', 2)  # Default to "do not dispose"
+
+                # Handle palette-based GIF with transparency
+                if frame.mode == 'P' and transparency_index is not None:
+                    # Convert to RGBA to handle transparency explicitly
+                    frame_rgba = frame_copy.convert('RGBA')
+                    # Create a new RGB image with black background
+                    frame_rgb = Image.new('RGB', frame.size, (0, 0, 0))
+                    # Paste RGBA frame, using alpha channel as mask
+                    frame_rgb.paste(frame_rgba, (0, 0), frame_rgba.split()[3])
+                else:
+                    # Convert directly to RGB for non-palette or non-transparent frames
+                    frame_rgb = frame_copy.convert('RGB')
+
+                # Handle disposal method
+                if disposal == 1:  # Restore to background
+                    current_frame = Image.new('RGB', gif_image.size, (0, 0, 0))
+                    current_frame.paste(frame_rgb, (0, 0))
+                elif disposal == 0 or disposal == 2:  # Do not dispose or unspecified
+                    if last_frame is None:
+                        current_frame = frame_rgb.copy()
+                    else:
+                        current_frame = last_frame.copy()
+                        current_frame.paste(frame_rgb, (0, 0))
+                else:  # Restore to previous (rare, fallback to frame_rgb)
+                    current_frame = frame_rgb.copy()
+
+                # Store the processed frame
+                frames.append(current_frame)
+                last_frame = current_frame
+                delay = frame.info.get('duration', 100)
+                frame_delays.append(int(delay))
+                frame_count += 1
+
+            if frame_count <= 1:
+                return "錯誤：GIF 只有一幀，不是動畫。", None
+
+            # Use first frame size for scaling
+            width, height = frames[0].size
+            scale_factor = min(max_width / width, max_height / height)
+            if scale_factor < 1.0:
+                width = int(width * scale_factor)
+                height = int(height * scale_factor)
+
+            # Write .h header
+            output_h += f"int frames = {frame_count};\\n"
+            output_h += f"int animation_width = {width};\\n"
+            output_h += f"int animation_height = {height};\\n"
+            output_h += f"const unsigned short PROGMEM animation[][ {width * height} ] = {{\\n"
+
+            # Write .bin metadata
+            output_bin.extend(struct.pack('<i', frame_count))
+            output_bin.extend(struct.pack('<i', width))
+            output_bin.extend(struct.pack('<i', height))
+            output_bin.extend(struct.pack('<i', frame_count))
+            for delay in frame_delays:
+                output_bin.extend(struct.pack('<i', delay))
+
+            # Process each frame
+            for f in range(frame_count):
+                # Resize the copied RGB frame
+                resized = frames[f].resize((width, height), Image.Resampling.BICUBIC)
+
+                output_h += "    {"
+                pixel_count = 0
+                for y in range(height):
+                    for x in range(width):
+                        rgb = resized.getpixel((x, y))
+                        value = color_to_rgb565(rgb)
+                        # Debug: Check for unexpected 0x3186 and replace with black
+                        if value == 0x3186:
+                            value = 0x0000  # Force transparent pixels to black
+                            rgb = (0, 0, 0)
+                        output_h += f"0x{value:04X}"
+                        output_bin.extend(struct.pack('<H', value))
+                        if pixel_count < width * height - 1:
+                            output_h += ", "
+                        pixel_count += 1
+                output_h += "},\\n"
+
+            output_h += "};\\n"
+            output_h += "int frame_delays[] = {"
+            for i, delay in enumerate(frame_delays):
+                output_h += f"{delay}"
+                if i < frame_count - 1:
+                    output_h += ", "
+            output_h += "};\\n"
+
+            return output_h, output_bin
+
+    except Exception as ex:
+        return f"錯誤：{str(ex)}", None
+
+# Main execution
+def main(gif_bytes, max_width, max_height):
+    return process_gif(gif_bytes, max_width, max_height)
+`;
+
+                // Run Python code
+                await pyodide.runPythonAsync(pythonCode);
+
+                // Set globals
+                pyodide.globals.set('gif_bytes', gifBytes);
+                pyodide.globals.set('max_width', maxWidth);
+                pyodide.globals.set('max_height', maxHeight);
+
+                // Call the main function
+                const result = await pyodide.runPythonAsync(`
+main(gif_bytes, max_width, max_height)
+`);
+
+                const [hContent, binContent] = result.toJs();
+
+                if (binContent === null) {
+                    status.textContent = hContent; // Error message
+                    document.getElementById('convertButton').disabled = false;
+                    return;
+                }
+
+                // Create blobs for download
+                hBlob = new Blob([hContent], { type: 'text/plain' });
+                binBlob = new Blob([binContent], { type: 'application/octet-stream' });
+
+                // Show download section
+                downloadSection.classList.add('show');
+                status.textContent = '轉換完成！請選擇下載檔案。';
+
+                // Reset button state
+                document.getElementById('convertButton').disabled = false;
+            } catch (error) {
+                status.textContent = `錯誤：${error.message}`;
+                document.getElementById('convertButton').disabled = false;
+            }
+        });
+
+        // Download .h button event
+        document.getElementById('downloadH').addEventListener('click', function() {
+            if (hBlob) {
+                const hUrl = URL.createObjectURL(hBlob);
+                const hLink = document.createElement('a');
+                hLink.href = hUrl;
+                hLink.download = document.getElementById('gifFile').files[0].name.replace('.gif', '.h');
+                hLink.click();
+                URL.revokeObjectURL(hUrl);
+            }
+        });
+
+        // Download .bin button event
+        document.getElementById('downloadBin').addEventListener('click', function() {
+            if (binBlob) {
+                const binUrl = URL.createObjectURL(binBlob);
+                const binLink = document.createElement('a');
+                binLink.href = binUrl;
+                binLink.download = document.getElementById('gifFile').files[0].name.replace('.gif', '.bin');
+                binLink.click();
+                URL.revokeObjectURL(binUrl);
+            }
+        });
+    </script>
+</body>
+</html>
