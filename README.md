@@ -98,15 +98,6 @@ Image processing (GIF parsing, resizing, RGB565 conversion)
 
 Note: No npm/yarn/pip installs required. All processing is client-side.
 
-Building and Customization
-
-Edit the Code: Modify index.html for UI changes or the Python logic in the <script> tag.
-Test Locally: Use a local server (e.g., python -m http.server) to avoid CORS issues with file uploads.
-Deploy to GitHub Pages:
-Go to repo settings > Pages.
-Set Source to "Deploy from a branch" (main branch, /root).
-Save and wait for the site to build (URL: https://ltcshadow.github.io/GIF-RGB565-Converter/).
-
 
 
 Contributing
@@ -263,15 +254,6 @@ HDF5
 
 
 注意：無需 npm/yarn/pip 安裝。所有處理皆在客戶端進行。
-
-建置與自訂
-
-編輯程式碼：修改 index.html 以變更 UI 或 <script> 標籤中的 Python 邏輯。
-本機測試：使用本機伺服器（例如 python -m http.server）以避免檔案上傳的 CORS 問題。
-部署至 GitHub Pages：
-進入儲存庫設定 > Pages。
-設定來源為「從分支部署」（main 分支，/root）。
-儲存並等待網站建置（URL：https://ltcshadow.github.io/GIF-RGB565-Converter/）。
 
 
 
