@@ -163,7 +163,7 @@ Check file permissions; try in incognito mode.
 
 If issues persist, open an Issue on GitHub.
 
-中文版 (繁體中文版)
+
 GIF-RGB565-Converter
 一個基於網頁的工具，用於將動態 GIF 檔案轉換為 RGB565 格式（.h 和 .bin 檔案），專為嵌入式裝置（如 ESP32 或 LilyGo 顯示器）優化。此工具完全在瀏覽器中運行，使用 Pyodide（WebAssembly 中的 Python）和 Pillow 進行圖像處理—無需伺服器！
 功能特點
